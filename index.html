@@ -1,0 +1,478 @@
+<html>
+    <link href="style.css" rel="stylesheet">
+        
+    <body onload="onLoad()" style="overflow: hidden;">
+        <div id="part1" class="backGroungImage">
+            <img src="background.png" style="width: 100%;height: 100%;">
+        </div>
+
+        <div id="part2" class="backGroungImage" >
+            <img src="background.png" style="width: 100%;height: 100%;">
+
+        </div>
+
+        <canvas id="canvas" width="500" height="500"></canvas>
+        
+        <img id="ninja" width="60" height="60" src="ninja_pic1.png" style="display: none;">
+
+        <div class="container">
+            <button id="restart" onclick="resetGame()">RESTART</button>
+
+            <div id="introduce">Hold down the mouse to stretch out a stick</div>
+        </div>
+
+        <script>
+            //           if(349.5 < 372 || 349.5 > 372 + 51.666666666666664){
+                //add = activeRectangleList[1].space - 2.55 || add = activeRectangleList[1].space - 2.55 + activeRectangleList[1].width
+                //strechLine()
+                //phase = "falling"
+
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            var phase = "waiting";
+            var add = 0;
+            var addX = 0;
+            var addY = 0;
+            var addMoveBack = 0;
+            var score = 0;
+            var lineTopY = 0;
+            var loop = setInterval(animate, 10);
+            var rectangleList = [];
+            var activeRectangleList = [];
+            var sticksList = [];
+            var isSuccessfulTry = true;
+            var traColor = "black";
+            var middleWidth = canvas.width / 60;
+            var middleHeight = middleWidth;
+            var addMoveBackGroundPart1 = 0;
+            var addMoveBackGroundPart2 = innerWidth * - 1;
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+
+            var startPointX = canvas.width/5;
+            var ninjaX = startPointX - canvas.width/50;
+            var ninjaY = canvas.height/2 - canvas.width/50;
+
+            var img = document.getElementById("ninja");
+            
+            var restartButton = document.getElementById("restart");
+
+            restartButton.style.height = innerWidth * 0.08;
+
+            introduce.style.bottom = innerHeight*(2/3) + "px";
+
+            part2.style.right = innerWidth * - 1 + "px";
+
+            
+            window.addEventListener("mousedown", function (event) {
+                if(phase == "waiting"){
+                    introduce.style.opacity = 0;
+
+                    phase = "strech";
+                }
+            });
+
+            window.addEventListener("mouseup", function (event) {
+                if(phase == "strech"){
+                    phase = "falling";
+                    
+                }
+            });
+
+            restartButton.addEventListener("click", function (event) {
+                event.preventDefault();
+                resetGame();
+                restartButton.style.display = "none";
+            });
+
+            window.addEventListener("keydown", function (event) {
+                if (event.key == " ") {
+                    event.preventDefault();
+                    resetGame();
+                    restartButton.style.display = "none";
+                    return;
+                }
+            });
+
+
+            function animate() {
+
+                switch(phase){
+                    case "strech":
+                        strechLine();
+                        showNinja();
+                        drawAllTheRectangle();
+                        drawSticks()
+                        break;
+                    case "falling":
+                        dropTheLine();
+                        showNinja();
+                        drawAllTheRectangle();
+                        drawSticks()
+                        break;
+                    case "walking":
+                        moveNinja()
+                        drawSticks()
+                        drawAllTheRectangle();
+                        break;
+                    case "ninjaFalling":
+                        dropNinjaAndTheStick()
+                        drawSticks()
+                        drawAllTheRectangle();
+                        showNinja();
+                        break;
+                    case "movingRectangles":
+                        moveRectanglesStickNinja();
+                        removeFromList()
+                        moveBackGround()
+                        break;
+                }
+                
+                var size = canvas.width / 60 
+                ctx.font = size.toString() + "px Arial";
+                ctx.fillStyle = "white";
+                ctx.fillText(score, 2, 40);
+            }
+
+
+            function strechLine(){
+                ctx.clearRect(0,0,canvas.width+1,canvas.height);
+                add += 2.55;
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(startPointX, canvas.height / 2-3);
+                //ctx.moveTo(canvas.width/5, canvas.height / 2 - 3);
+
+                ctx.lineTo(startPointX, canvas.height/ 2-add);
+                ctx.stroke();
+                lineTopY = add;
+            }
+
+
+            function dropTheLine(){
+                ctx.clearRect(0,0,canvas.width+1,canvas.height+1);
+                addX += 0.035;
+                //addY += 0.5;
+                addXNext = addX + 0.035;
+
+                let newAddX = Math.sin(addX)*lineTopY;
+                let newAddY = Math.cos(addX)*lineTopY;
+                let newAddYNext = Math.cos(addXNext)*lineTopY;
+
+                // if next step will pass the line - calculate exact value
+                if((newAddYNext+canvas.height/2)<=(canvas.height/2 + 3.2)){
+                    newAddX = lineTopY;
+                    newAddY = 1;
+                }
+
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(startPointX, canvas.height / 2-2);
+                ctx.lineTo(startPointX + newAddX,  nY(newAddY+canvas.height / 2));
+                ctx.stroke();
+                
+                if((newAddY+canvas.height/2)<=(canvas.height/2 + 3.2)){
+                    phase = "walking";
+                    sticksList.push(new Stick(newAddX));
+                    isSuccessfulTry = checkIfTheTryIsSuccessful();
+                    if(isSuccessfulTry){
+                        score ++;
+                        if(isItDoubleScore()){
+                            score ++;
+                            introduce.innerHTML = "DOUBLE SCORE";
+                            introduce.style.opacity = 1;
+                            setTimeout(() => (introduce.style.opacity = 0), 1000);
+                        }
+                    }
+                    console.log("isSuccessfulTry:" + isSuccessfulTry)
+
+                }
+            }
+
+            function checkIfTheTryIsSuccessful(){
+                console.log("start")
+
+                console.log(sticksList[sticksList.length-1].stickLength)
+                console.log(activeRectangleList[1].space)
+                console.log(activeRectangleList[1].width)
+                console.log("end")
+                if(sticksList[sticksList.length-1].stickLength < activeRectangleList[1].space || sticksList[sticksList.length-1].stickLength > activeRectangleList[1].space + activeRectangleList[1].width){
+            
+                    return false;
+                }
+                return true;
+            }
+            
+            function nY(y){
+                return canvas.height-y;
+            }
+
+            class Rectangle{
+                constructor(){
+                    this.heigth = canvas.height / 2;
+                    this.width = canvas.width / (Math.floor(Math.random() * 30) + 20);
+                    this.space = canvas.width / (Math.floor(Math.random() * 10) + 5);
+                    this.posX = 0;
+                    this.middleStart = this.posX + (this.width / 2 - middleWidth/2)
+                }
+            }
+
+            class Stick{
+                constructor(stickLength){
+                    this.stickLength = stickLength;
+                    this.startX = startPointX;
+                }
+            }
+
+            function onLoad(){
+                createRectangle();
+                showNinja(startPointX - canvas.width/50, canvas.height/2 - canvas.width/50);
+            }
+            
+            function createRectangle(){
+                rectangleList = [new Rectangle(), new Rectangle(), new Rectangle(), new Rectangle(), new Rectangle(), new Rectangle(), new Rectangle(), new Rectangle()]
+                activeRectangleList = rectangleList.slice();;
+                //drawAllTheRectangle();
+
+                //first time
+                var totalSpace = startPointX;
+                ctx.fillStyle = traColor;
+
+                var n = 0;
+                for(var i of rectangleList){
+                    ctx.fillStyle = traColor;
+                    if(n == 0){
+                        i.posX = startPointX-i.width
+                        ctx.fillRect(i.posX, canvas.height-i.heigth, i.width, i.heigth);
+
+                        ctx.fillStyle = "red";
+                        i.middleStart = i.posX + (i.width / 2 - middleWidth/2)
+                        ctx.fillRect(i.middleStart, canvas.height-i.heigth, middleWidth, middleHeight);
+
+                    }else if(n > 1){
+                        totalSpace += i.space + rectangleList[n-1].width;
+                        ctx.fillRect(totalSpace, canvas.height-i.heigth, i.width, i.heigth);
+                        i.posX = totalSpace;
+                        
+                        ctx.fillStyle = "red";
+                        i.middleStart = i.posX + (i.width / 2 - middleWidth/2)
+                        ctx.fillRect(i.middleStart, canvas.height-i.heigth, middleWidth, middleHeight);
+                    }else{
+                        totalSpace += i.space;
+                        ctx.fillRect(totalSpace, canvas.height-i.heigth, i.width, i.heigth);
+                        i.posX = totalSpace;
+
+                        ctx.fillStyle = "red";
+                        i.middleStart = i.posX + (i.width / 2 - middleWidth/2)
+                        ctx.fillRect(i.middleStart, canvas.height-i.heigth, middleWidth, middleHeight);
+                    }
+                    n += 1;
+
+                }
+
+            }
+
+            function drawAllTheRectangle(){
+                // var new1 = new Rectangle();
+                // ctx.fillStyle = "green";
+
+                // ctx.fillRect(canvas.width/2, canvas.height-new1.heigth, new1.width, new1.heigth);
+
+                for(var i of rectangleList){
+                    ctx.fillStyle = traColor;
+                    ctx.fillRect(i.posX, canvas.height-i.heigth, i.width, i.heigth);
+
+                    ctx.fillStyle = "red";
+                    i.middleStart = i.posX + (i.width / 2 - middleWidth/2)
+                    ctx.fillRect(i.middleStart, canvas.height-i.heigth, middleWidth, middleHeight);
+                }
+            }
+
+            function showNinja(){
+                ctx.drawImage(img, ninjaX, ninjaY, canvas.width/50, canvas.width/50);
+            }
+
+            function moveNinja(){
+                ctx.clearRect(0,0,canvas.width+1,canvas.height+1);
+                ninjaX += 2.6;
+                ctx.drawImage(img, ninjaX, ninjaY, canvas.width/50, canvas.width/50);
+
+                if(isSuccessfulTry){
+                    if(ninjaX >= startPointX + activeRectangleList[1].space + activeRectangleList[1].width - canvas.width/50){
+                        phase = "movingRectangles";
+                    }
+                }else if(ninjaX >= startPointX + sticksList[sticksList.length-1].stickLength){
+                    phase = "ninjaFalling";
+                }
+            }
+
+            function drawSticks(){
+                var n = 0;
+                for(var i of sticksList){
+                    if((phase == "ninjaFalling" || phase == "end") && n == sticksList.length-1){
+                        break;
+                    }
+
+                    ctx.beginPath();
+                    ctx.moveTo(i.startX, canvas.height / 2-3);
+                    ctx.lineTo(i.startX + i.stickLength, canvas.height / 2-3);
+                    ctx.stroke();
+                    n++;
+                }
+            }
+
+            function dropNinjaAndTheStick(){
+                ctx.clearRect(0,0,canvas.width+1,canvas.height+1);
+                // ninja fall
+                ninjaY += 4;
+
+                // stick fall
+                let newAddX = Math.sin(addX)*lineTopY;
+                let newAddY = Math.cos(addX)*lineTopY;
+
+                if(newAddX >= 2){
+                    addX += 0.025;
+
+                    ctx.strokeStyle = 'white';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(startPointX, canvas.height / 2-2);
+                    ctx.lineTo(startPointX + newAddX,  nY(newAddY+canvas.height / 2));
+                    ctx.stroke();
+                }else{
+                    ctx.beginPath();
+                    ctx.moveTo(startPointX, canvas.height / 2-2);
+                    ctx.lineTo(startPointX + newAddX,  nY(newAddY+canvas.height / 2));
+                    ctx.stroke();
+
+                }
+
+                if(ninjaY + canvas.width/50 > canvas.height && newAddX <= startPointX){
+                    phase = "end";  
+                    restartButton.style.display = "block";
+                }
+            }
+
+            function moveRectanglesStickNinja(){
+                ctx.fillStyle = traColor;
+
+                // move backwards Rectangles, stick, ninja. move backwards "moveBack"
+                let moveBack = activeRectangleList[1].posX + activeRectangleList[1].width;
+
+                var moveBackwards = 4;
+
+                if(moveBack>startPointX){
+                    //Rectangles
+                    ctx.clearRect(0,0,canvas.width+1,canvas.height+1);
+                    for(let i of rectangleList){
+                        i.posX -= moveBackwards;
+                        ctx.fillStyle = traColor;
+                        ctx.fillRect(i.posX, canvas.height-i.heigth, i.width, i.heigth);
+
+                        ctx.fillStyle = "red";
+                        i.middleStart = i.posX + (i.width / 2 - middleWidth/2)
+                        ctx.fillRect(i.middleStart, canvas.height-i.heigth, middleWidth, middleHeight);
+                
+                        //console.log(i.posX)
+                    }
+
+                    //stick
+                    for(let i of sticksList){
+                        i.startX -= moveBackwards;
+                    }
+
+                    drawSticks();
+
+                    //ninja
+                    ninjaX -= moveBackwards;
+                    showNinja()
+
+                }else{
+                    phase = "waiting";
+                    add = 0;
+                    addX = 0;
+                    addY = 0;
+                    ninjaX = startPointX - canvas.width/50;
+
+                    console.log("before")
+                    console.log(JSON.stringify(activeRectangleList));
+
+                    // add new rectangle
+
+                    activeRectangleList.push(new Rectangle())
+                    activeRectangleList[activeRectangleList.length-1].posX = activeRectangleList[activeRectangleList.length-2].posX + activeRectangleList[activeRectangleList.length-2].width + activeRectangleList[activeRectangleList.length-1].space;
+                    rectangleList.push(activeRectangleList[activeRectangleList.length-1])
+
+                    activeRectangleList = activeRectangleList.slice(1, activeRectangleList.length);
+
+                    console.log("after")
+                    console.log(JSON.stringify(activeRectangleList));
+                    
+                    drawAllTheRectangle();
+                }
+                
+            }
+
+            function isItDoubleScore(){
+                //if(activeRectangleList[1].middleStart < sticksList[sticksList.length-1]. && activeRectangleList[1].middleStart > sticksList[sticksList.length-1])
+                console.log(sticksList[sticksList.length-1].stickLength)
+                console.log(activeRectangleList[1].space + (activeRectangleList[1].width / 2 - middleWidth/2))
+
+                if(sticksList[sticksList.length-1].stickLength >= (activeRectangleList[1].space + (activeRectangleList[1].width / 2 - middleWidth/2)) && sticksList[sticksList.length-1].stickLength <= (activeRectangleList[1].space + (activeRectangleList[1].width / 2 - middleWidth/2) + middleWidth)){
+                    return true; 
+                }
+            }
+
+            function resetGame(){
+                console.log("restart")
+
+                phase = "waiting";
+                add = 0;
+                addX = 0;
+                addY = 0;
+                addMoveBack = 0;
+                score = 0;
+                lineTopY = 0;
+                rectangleList = [];
+                activeRectangleList = [];
+                sticksList = [];
+                isSuccessfulTry = true;
+                ninjaY = canvas.height/2 - canvas.width/50;
+                ninjaX = startPointX - canvas.width/50;
+
+                ctx.clearRect(0,0,canvas.width+1,canvas.height+1);
+                onLoad();
+            }
+
+            function removeFromList(){
+                if(rectangleList[0].posX + rectangleList[0].width < 0){
+                    rectangleList = rectangleList.slice(1, rectangleList.length);
+                }
+
+                if(sticksList[0].startX + sticksList[0].stickLength < 0){
+                    sticksList = sticksList.slice(1, sticksList.length);
+                }
+            }
+            
+            function moveBackGround(){
+                if(addMoveBackGroundPart1 >= innerWidth){
+                    addMoveBackGroundPart1 = innerWidth * -1;
+                }else if(addMoveBackGroundPart2 >= innerWidth){
+                    addMoveBackGroundPart2 = innerWidth * -1;
+                }
+
+                addMoveBackGroundPart1 += 2;
+                addMoveBackGroundPart2 += 2;
+                part1.style.right = addMoveBackGroundPart1 + "px";
+                part2.style.right = addMoveBackGroundPart2 + "px";
+
+            }
+
+        </script>
+
+    </body>
+
+</html>
